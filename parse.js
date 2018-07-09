@@ -28,11 +28,11 @@ require('./blogs.json')
 
       res.on('end', (e) => {
         try {
-          let response = /(?:<link rel='self' type='application\/atom\+xml' href=')(.*?)(?='\s?\/>)/.exec(body.join(''))[1];
+          const regex = /(?:<link rel='self' type='application\/atom\+xml' href=')(.*?)(?='\s?\/>)/;
+          let response = regex.exec(body.join(''))[1];
           callback(response + '?max-results=9999&alt=rss&prettyprint=true');
           if (!fs.existsSync(outdir)) fs.mkdirSync(outdir);
-        }
-        catch(err) {
+        } catch (err) {
           console.error(body.join());
         }
       });
@@ -44,7 +44,7 @@ require('./blogs.json')
   }
 
   getBetterURL((response) => {
-    if(response) {
+    if (response) {
       parseFeed({ name: source.name, url: response }, counter);
     } else {
       parseFeed(source, counter);
@@ -55,19 +55,18 @@ require('./blogs.json')
 function parseFeed(source, counter) {
 
   let parser = new Parser();
-   
   (async () => {
-   
+
     let feed = await parser.parseURL(source.url);
-     
+
     console.log('\n' + feed.title.replace(/^Page \d{1,} – /, ''), '\n' + source.url);
 
     if (!feed.items.length) return;
-   
+
     feed.items.reverse().forEach((item, index) => {
 
       console.log(index + 1, item.title);
-      
+
       var entities = new Entities();
       var body = entities.decode(item.content) || entities.decode(item['content:encoded']);
 
@@ -77,11 +76,13 @@ function parseFeed(source, counter) {
         headers: ['blog', 'title', 'date', 'text'],
         sendHeaders: true
       });
-      writer.pipe(fs.createWriteStream(outdir + '/' + source.name + '-' + pad(counter, 3) + '.csv'));
+      writer.pipe(fs.createWriteStream(`${outdir}/${source.name}-${pad(counter, 3)}.csv`));
       writer.write({
         blog: feed.title.replace(/^Page \d{1,} – /, ''),
         // Fallback to publication date when title is empty
-        title: (typeof item.title === 'string') ? item.title : new Date(item.published || item.pubDate).toUTCString(),
+        title: (typeof item.title === 'string')
+              ? item.title
+              : new Date(item.published || item.pubDate).toUTCString(),
         date: item.pubDate || item.published,
         text: striptags(body).trim()
       });
@@ -89,13 +90,15 @@ function parseFeed(source, counter) {
 
       counter++;
     });
-   
+
   })();
 
 }
 
 function pad(number, size) {
   var s = String(number);
-  while (s.length < (size || 2)) { s = "0" + s; }
+  while (s.length < (size || 2)) {
+    s = '0' + s;
+  }
   return s;
 }
